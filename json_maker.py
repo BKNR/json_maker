@@ -3,7 +3,7 @@
 
 # Takes data from measData file, increments it by some amount,
 # writes a JSON file with the timestamp and the data JSON file 
-# is named Netta_data-[ISO 8601 timestamp].json
+# is named netta_data-[device_id]-[unix-timestamp].json
 
 import json 
 import time
