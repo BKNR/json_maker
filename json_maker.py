@@ -61,10 +61,10 @@ def makeJsonFile(amount, deviceID, location):
         data = map(float, f)
 
     for i in xrange(amount):
-        unixTimestamp += i * 60
+        unixTimestamp += 60
         ISOTimestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(unixTimestamp))
-        data = newValues(data)    
-        measValuesDict = makeMeasurementValues(data)
+        new_data = newValues(data)    
+        measValuesDict = makeMeasurementValues(new_data)
         deviceDict = dict([('deviceID', deviceID), ('firmwareVersion', '0.01b'),
             ('locationCoordinates', '60.2194,24.8139'), ('locationTxt', location),
             ('measurementValues', measValuesDict)])
