@@ -3,17 +3,15 @@
 
 # Takes data from measData file, increments it by some amount,
 # writes a JSON file with the timestamp and the data JSON file 
-# is named netta_data-[device_id]-[unix-timestamp].json
+# is named netta_data-deviceID-[ISO 8601 timestamp].json
 
+import sys
 import json 
 import time
 import random
 
-DEVICE_ID = "0114"
-
 def randomValue(value):
     return value + (value / 10) * random.random()
-
 def newValues(values):
     return [randomValue(item) for item in values]
 
@@ -52,27 +50,44 @@ def makeMeasurementValues(data):
     
     return measValues
 
-# ISO 8601 timestamp eg. '2015-01-28T16:24:48Z' 
+def makeJsonFile(amount, deviceID, location):
+    # ISO 8601 timestamp eg. '2015-01-28T16:24:48Z' 
 
-unixTimestamp = time.time()
-ISOTimestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(unixTimestamp))
+    amount = int(amount)
+    unixTimestamp = time.time()
+    
 
+    with open("measData") as f:
+        data = map(float, f)
 
-with open("measData") as f:
-    data = map(float, f)
+    for i in xrange(amount):
+        unixTimestamp += i * 60
+        ISOTimestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(unixTimestamp))
+        data = newValues(data)    
+        measValuesDict = makeMeasurementValues(data)
+        deviceDict = dict([('deviceID', deviceID), ('firmwareVersion', '0.01b'),
+            ('locationCoordinates', '60.2194,24.8139'), ('locationTxt', location),
+            ('measurementValues', measValuesDict)])
+        devTimeDict = dict([('timestamp', ISOTimestamp), ('device', deviceDict)]) 
+        wholeThingDict = dict([('nettaData', devTimeDict)])
 
-data = newValues(data)
-measValuesDict = makeMeasurementValues(data)
+        filename = "netta_data-" + deviceID + "-" + str(int(unixTimestamp)) + ".json"
+        f = open(filename, 'w+')
 
-deviceDict = dict([('deviceID', DEVICE_ID), ('firmwareVersion', '0.01b'),
-    ('locationCoordinates', '60.2194,24.8139'), ('locationTxt', 'Leppavaara'),
-    ('measurementValues', measValuesDict)])
+        json.dump(wholeThingDict, f, indent=4, separators=(',', ': '), sort_keys=True)
+        f.close()
 
-devTimeDict = dict([('timestamp', ISOTimestamp), ('device', deviceDict)]) 
-wholeThingDict = dict([('nettaData', devTimeDict)])
+def main(argv):
+    # get amount, deviceID, location from command line arguments
+    if len(argv) == 0:
+        print("Making one json file using default parameters")
+        makeJsonFile(1, "0114", "Leppavaara")
+    elif len(argv) == 3:
+        print("Making " + argv[0] + " data json files")
+        makeJsonFile(argv[0], argv[1], argv[2])
+    else:
+        print("Invalid arguments:\n")
+        print("Correct usage: python json_maker.py [amount] [deviceID] [location]")
 
-filename = "netta_data-" + DEVICE_ID + "-" + str(int(unixTimestamp)) + ".json"
-f = open(filename, 'w+')
-
-json.dump(wholeThingDict, f, indent=4, separators=(',', ': '), sort_keys=True)
-f.close()
+if __name__ == "__main__":
+    main(sys.argv[1:])    

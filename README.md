@@ -1,2 +1,2 @@
 # json_maker
-The voodoo you do so well
+Usage: python json_maker.py [amount] [deviceID] [location]
