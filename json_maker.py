@@ -3,91 +3,68 @@
 
 # Takes data from measData file, increments it by some amount,
 # writes a JSON file with the timestamp and the data JSON file 
-# is named netta_data-deviceID-[ISO 8601 timestamp].json
+# is named sensor_data-deviceID-[ISO 8601 timestamp].json
 
 import sys
 import json 
 import time
-import random
+import datetime
 
-def randomValue(value):
-    return value + (value / 10) * random.random()
-def newValues(values):
-    return [randomValue(item) for item in values]
+def splitdata(filename):
+    with open(filename, 'r') as f:
+        data = f.read().splitlines(True)
 
-def makeMeasurementValues(data):
+    return data[1:-1]
+def makeJsonFile(dataline):
+    # ISO 8601 timestamp eg. '2015-01-28T16:24:48' 
+    deviceID = "4577"
+
+    year = int(dataline[0][:4])
+    month = int(dataline[0][5:7])
+    day = int(dataline[0][-2:])
+
+    hours = int(dataline[1][:2])
+    minutes = int(dataline[1][3:5])
+    seconds = int(dataline[1][6:8])
+
+    unixTimestamp = time.mktime(datetime.datetime(year, month, day, hours, minutes, seconds).timetuple())
+
+    deviceID = "4577"
+
     measValues = dict()
-    measValues['measurepA'] = data[0]
-    measValues['measuremg'] = data[1]
-    measValues['measureN'] = data[2]
-    measValues['zeroLevel'] = data[3]
-    measValues['coronaI'] = data[4]
-    measValues['coronaU'] = data[5]
-    measValues['trapU'] = data[6]
-    measValues['tempAmbient'] = data[7]
-    measValues['tempProcess'] = data[8]
-    measValues['tempSensor'] = data[9]
-    measValues['tempInlet'] = data[10]
-    measValues['tempElectronics'] = data[11]
-    measValues['systemPressure'] = data[12]
-    measValues['filterPressure'] = data[13]
-    measValues['fanRPM'] = data[14]
-    measValues['coronaStability'] = data[15]
-    measValues['coronaStabilityMax'] = data[16]
-    measValues['ambientHumidity'] = data[17]
-    measValues['errorMaster'] = 0.0
-    measValues['errorPressure'] = 0.0
-    measValues['errorTempAmbient'] = 0.0
-    measValues['errorTempSensorHeater'] = 0.0
-    measValues['errorTempInletHeater'] = 0.0
-    measValues['errorTempProcess'] = 0.0
-    measValues['errorFanRPM'] = 0.0
-    measValues['errorSensorOffset'] = 0.0
-    measValues['errorSensorCorona'] = 0.0
-    measValues['errorSensorTrap'] = 0.0
-    measValues['errorElectronicsTemp'] = 0.0
-    measValues['errorSensorImpedance'] = 0.0
-    
-    return measValues
+    measValues['measurepA'] = dataline[3]
+    measValues['measuremg'] = dataline[2]
+    measValues['measureN'] = dataline[4]
 
-def makeJsonFile(amount, deviceID, location):
-    # ISO 8601 timestamp eg. '2015-01-28T16:24:48Z' 
+    ISOTimestamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(unixTimestamp))  
+    deviceDict = dict([('deviceID', deviceID), ('firmwareVersion', '0'),
+        ('locationCoordinates', "-"),s ('locationTxt', location),
+        ('measurementValues', measValues)])
+    devTimeDict = dict([('timestamp', ISOTimestamp), ('device', deviceDict)]) 
+    wholeThingDict = dict([('nettaData', devTimeDict)])
 
-    amount = int(amount)
-    unixTimestamp = time.time()
-    
+    filename = "sensor_data-" + deviceID + "-" + str(int(unixTimestamp)) + ".json"
+    f = open(filename, 'w+')
 
-    with open("measData") as f:
-        data = map(float, f)
-
-    for i in xrange(amount):
-        unixTimestamp += 60
-        ISOTimestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(unixTimestamp))
-        new_data = newValues(data)    
-        measValuesDict = makeMeasurementValues(new_data)
-        deviceDict = dict([('deviceID', deviceID), ('firmwareVersion', '0.01b'),
-            ('locationCoordinates', '60.2194,24.8139'), ('locationTxt', location),
-            ('measurementValues', measValuesDict)])
-        devTimeDict = dict([('timestamp', ISOTimestamp), ('device', deviceDict)]) 
-        wholeThingDict = dict([('nettaData', devTimeDict)])
-
-        filename = "netta_data-" + deviceID + "-" + str(int(unixTimestamp)) + ".json"
-        f = open(filename, 'w+')
-
-        json.dump(wholeThingDict, f, indent=4, separators=(',', ': '), sort_keys=True)
-        f.close()
+    json.dump(wholeThingDict, f, indent=4, separators=(',', ': '), sort_keys=True)
+    f.close()
+    return filename
 
 def main(argv):
-    # get amount, deviceID, location from command line arguments
-    if len(argv) == 0:
-        print("Making one json file using default parameters")
-        makeJsonFile(1, "0114", "Leppavaara")
-    elif len(argv) == 3:
-        print("Making " + argv[0] + " data json files")
-        makeJsonFile(argv[0], argv[1], argv[2])
+    # get deviceID and location from command line arguments
+    if len(argv) == 1:
+        if (argv[0][-3:] == "txt"):
+            print("Sending data from file to cloud")
+            data = splitdata(argv[0])
+            for line in data:
+                jsonfile = makeJsonFile(line.split())
+                # TÄSSÄ LÄHETETÄÄN JSON PILVEEN
+                # TÄSSÄ POISTATAAN JSON
+        else:
+            print("invalid file")
     else:
-        print("Invalid arguments:\n")
-        print("Correct usage: python json_maker.py [amount] [deviceID] [location]")
+        print("Invalid arguments")
+        print("Correct usage: python json_maker.py [filename]")
 
 if __name__ == "__main__":
-    main(sys.argv[1:])    
+    main(sys.argv[1:]) 
